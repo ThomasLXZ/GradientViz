@@ -2,62 +2,62 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-# --- 页面配置 ---
-st.set_page_config(page_title="梯度可视化", page_icon="📈", layout="wide")
+# --- Page Configuration ---
+st.set_page_config(page_title="GradientViz", page_icon="📈", layout="wide")
 
-st.title("🎯 梯度与最速上升方向可视化")
+st.title("🎯 Gradient & Steepest Ascent Visualization")
 
-# --- 侧边栏 ---
+# --- Sidebar Controls ---
 with st.sidebar:
-    st.header("⚙️ 参数设置")
+    st.header("⚙️ Settings")
     
     func_type = st.selectbox(
-        "函数类型",
-        ["抛物面 (x² + y²)", "马鞍面 (x² - y²)", "波浪面", "高斯曲面"]
+        "Function Type",
+        ["Paraboloid (x² + y²)", "Saddle (x² - y²)", "Wave Surface", "Gaussian"]
     )
     
-    px = st.slider("X 坐标", -4.0, 4.0, 1.5, step=0.1)
-    py = st.slider("Y 坐标", -4.0, 4.0, 1.5, step=0.1)
-    arrow_scale = st.slider("梯度箭头缩放", 0.1, 1.0, 0.4, step=0.05)
+    px = st.slider("X Coordinate", -4.0, 4.0, 1.5, step=0.1)
+    py = st.slider("Y Coordinate", -4.0, 4.0, 1.5, step=0.1)
+    arrow_scale = st.slider("Gradient Arrow Scale", 0.1, 1.0, 0.4, step=0.05)
 
-# --- 函数定义 ---
-if func_type == "抛物面 (x² + y²)":
+# --- Function Definitions ---
+if func_type == "Paraboloid (x² + y²)":
     def f(x, y): return x**2 + y**2
     def grad(x, y): return (2*x, 2*y)
-elif func_type == "马鞍面 (x² - y²)":
+elif func_type == "Saddle (x² - y²)":
     def f(x, y): return x**2 - y**2
     def grad(x, y): return (2*x, -2*y)
-elif func_type == "波浪面":
+elif func_type == "Wave Surface":
     def f(x, y): return np.sin(x) + np.cos(y)
     def grad(x, y): return (np.cos(x), -np.sin(y))
-else:
+else:  # Gaussian
     def f(x, y): return np.exp(-(x**2 + y**2) / 4)
     def grad(x, y): return (-x/2 * np.exp(-(x**2 + y**2)/4), -y/2 * np.exp(-(x**2 + y**2)/4))
 
-# --- 网格数据 ---
+# --- Grid Data ---
 x = np.linspace(-5, 5, 50)
 y = np.linspace(-5, 5, 50)
 X, Y = np.meshgrid(x, y)
 Z = f(X, Y)
 
-# --- 计算梯度 ---
+# --- Compute Gradient ---
 grad_x, grad_y = grad(px, py)
 pz = f(px, py)
 
-# --- 信息显示 ---
+# --- Info Display ---
 col1, col2, col3 = st.columns(3)
-col1.metric("当前点", f"({px:.1f}, {py:.1f})")
-col2.metric("函数值", f"{pz:.3f}")
-col3.metric("梯度", f"({grad_x:.2f}, {grad_y:.2f})")
+col1.metric("Current Point", f"({px:.1f}, {py:.1f})")
+col2.metric("Function Value", f"{pz:.3f}")
+col3.metric("Gradient", f"({grad_x:.2f}, {grad_y:.2f})")
 
 st.divider()
 
-# --- 图表 ---
+# --- Charts ---
 chart_col1, chart_col2 = st.columns(2)
 
-# 3D 曲面图
+# 3D Surface Plot
 with chart_col1:
-    st.subheader("3D 曲面图")
+    st.subheader("3D Surface Plot")
     
     fig3d = go.Figure()
     fig3d.add_trace(go.Surface(x=X, y=Y, z=Z, colorscale='Viridis', opacity=0.9, showscale=False))
@@ -70,15 +70,15 @@ with chart_col1:
     )
     st.plotly_chart(fig3d, use_container_width=True)
 
-# 等高线图
+# Contour Plot
 with chart_col2:
-    st.subheader("等高线图 + 梯度箭头")
+    st.subheader("Contour Plot + Gradient Arrow")
     
     fig_contour = go.Figure()
     fig_contour.add_trace(go.Contour(x=x, y=y, z=Z, colorscale='Viridis', showscale=False))
     fig_contour.add_trace(go.Scatter(x=[px], y=[py], mode='markers', marker=dict(size=15, color='red')))
     
-    # 梯度箭头
+    # Gradient arrow
     fig_contour.add_annotation(
         x=px + grad_x * arrow_scale, y=py + grad_y * arrow_scale,
         ax=px, ay=py,
@@ -95,34 +95,36 @@ with chart_col2:
 
 st.divider()
 
-# X/Y 切片图
-st.subheader("X/Y 方向切片")
+# X/Y Slice Plots
+st.subheader("X/Y Direction Slices")
 slice_col1, slice_col2 = st.columns(2)
 
+# X-direction slice (fixed y)
 with slice_col1:
     z_x = f(x, py)
     fig_x = go.Figure()
     fig_x.add_trace(go.Scatter(x=x, y=z_x, mode='lines', line=dict(color='#667eea', width=3)))
     fig_x.add_trace(go.Scatter(x=[px], y=[pz], mode='markers', marker=dict(size=12, color='red')))
     
-    # 切线
+    # Tangent line
     t_x = np.array([px - 1.5, px + 1.5])
     t_z = pz + grad_x * (t_x - px)
     fig_x.add_trace(go.Scatter(x=t_x, y=t_z, mode='lines', line=dict(color='red', width=2, dash='dash')))
     
-    fig_x.update_layout(title=f"X切片 (y={py:.1f}), 斜率={grad_x:.2f}", height=300, margin=dict(l=0, r=0, t=40, b=0))
+    fig_x.update_layout(title=f"X-Slice (y={py:.1f}), Slope={grad_x:.2f}", height=300, margin=dict(l=0, r=0, t=40, b=0))
     st.plotly_chart(fig_x, use_container_width=True)
 
+# Y-direction slice (fixed x)
 with slice_col2:
     z_y = f(px, y)
     fig_y = go.Figure()
     fig_y.add_trace(go.Scatter(x=y, y=z_y, mode='lines', line=dict(color='#764ba2', width=3)))
     fig_y.add_trace(go.Scatter(x=[py], y=[pz], mode='markers', marker=dict(size=12, color='red')))
     
-    # 切线
+    # Tangent line
     t_y = np.array([py - 1.5, py + 1.5])
     t_z_y = pz + grad_y * (t_y - py)
     fig_y.add_trace(go.Scatter(x=t_y, y=t_z_y, mode='lines', line=dict(color='red', width=2, dash='dash')))
     
-    fig_y.update_layout(title=f"Y切片 (x={px:.1f}), 斜率={grad_y:.2f}", height=300, margin=dict(l=0, r=0, t=40, b=0))
+    fig_y.update_layout(title=f"Y-Slice (x={px:.1f}), Slope={grad_y:.2f}", height=300, margin=dict(l=0, r=0, t=40, b=0))
     st.plotly_chart(fig_y, use_container_width=True)
